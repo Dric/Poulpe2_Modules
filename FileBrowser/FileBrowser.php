@@ -197,6 +197,7 @@ class FileBrowser extends Module{
 			'TRUEFRENCH'  => '',
 			'french'      => '',
 			'vff'         => '',
+			'vf'          => '',
 			'subforces'   => '',
 			' MULTI '     => '',
 			'ac3'         => '',
@@ -205,16 +206,12 @@ class FileBrowser extends Module{
 			'.'           => ' ',
 			'  '          => ' '
 		);
-		$name =  str_ireplace(array_keys($replace), array_values($replace), $fileName);
-		// On vire les indications de qualité ou de compatibilité entre crochets
-		$name = preg_replace('/\[.*\]/i', '', $name);
-		// Et on vire les noms à la noix en fin de torrent
-		$name = trim(preg_replace('/(-.\S*)$/i', '', $name), ' -');
-		preg_match_all('/(\\d{4})/i', $name, $matches);
-		$year = $matches[0];
-		unset($matches);
-		$name = preg_replace('/(\\d{4})/i', '', $name);
-
+		// On vire les éventuels numéros aux débuts des films, mais seulement ceux qui sont suivis immédiatement par un `. `
+		$name = preg_replace('/^(\d+)\. /i', '', $fileName);
+		$name =  str_ireplace(array_keys($replace), array_values($replace), $name);
+		// On convertit les chiffres romains en nombres
+		$name = str_replace('III', '3', $name);
+		$name = str_replace('II', '2', $name);
 		// Détection d'un épisode de série TV
 		preg_match_all('/\sS(\d{1,2})E(\d{1,2})/im', $name, $matches);
 		if (!empty($matches[0])){
@@ -222,10 +219,24 @@ class FileBrowser extends Module{
 			$episode = intval($matches[2][0]);
 			unset($matches);
 			$name = preg_replace('/\sS(\d{1,2})E(\d{1,2})/i', '', $name);
+			// On vire les indications de qualité ou de compatibilité entre crochets
+			$name = preg_replace('/\[.*\]/i', '', $name);
+			// Et on vire les noms à la noix en fin de torrent
+			$name = trim(preg_replace('/(-.\S*)$/i', '', $name), ' -');
 			$type = 'tv';
 		}else{
 			$type = 'movie';
+			if (preg_match('/^(.+?)(\d{4})/i', $name, $matches)) {
+				$name = trim($matches[1], '[]( .');
+				$year = $matches[2];
+			}else{
+				// Et on vire les noms à la noix en fin de torrent
+				$name = trim(preg_replace('/(-.\S*)$/i', '', $name), ' -');
+				$name = trim($name, '[]( .');
+			}
 		}
+		$name = \Sanitize::removeAccents($name);
+		//var_dump($name);
 		echo '<!-- name : '.\Get::varDump($name).' -->'."\n";
 		if ($type =='tv') echo '<!-- saison : '.\Get::varDump($season).' - épisode : '.\Get::varDump($episode).' -->'."\n";
 		spl_autoload_register(function ($class) {
@@ -246,21 +257,33 @@ class FileBrowser extends Module{
 			'query' => $name
 		);
 		if (!empty($year)) $filter['year'] = (int)$year;
-		$results = $tmdb->search($type, array('query' => $name));
+		$results = $tmdb->search($type, $filter);
 		if (empty($results)){
 			// On tente avec le premier mot du film
-			$results = $tmdb->search($type, array('query' => explode(' ', $name)[0]));
+			$filter['query'] = explode(' ', $name)[0];
+			$results = $tmdb->search($type, $filter);
 		}
+
 		if (!empty($results)){
 			$class = "\\TMDB\\structures\\".ucfirst($type);
-			$movie = new $class(reset($results)->id);
+			$result = null;
+			foreach ($results as $id => $movie){
+				if (\Sanitize::sanitizeFilename($movie->title) == $name or \Sanitize::sanitizeFilename($movie->original_title) == $name){
+					$result = $movie;
+					break;
+				}
+			}
+			//var_dump($results);
+			if (is_null($result)) $result = reset($results);
+			$movie = new $class($result->id);
 			if ($type == 'movie'){
 				// On récupère la date de sortie en France
 				$release = \Get::getObjectsInList($movie->releases()->countries, 'iso_3166_1', 'FR');
 				if (empty($release)){
 					// Si la date de sortie en France n'est pas renseignée, on prend celle des USA
-					$release = \Get::getObjectsInList($movie->releases()->countries, 'iso_3166_1', 'US');
+					$release = \Get::getObjectsInList($movie->releases()->countries, 'iso_3166_1', strtoupper($movie->original_language));
 				}
+
 				$release = $release[0];
 			}else{
 				$release = new \StdClass();
@@ -270,6 +293,7 @@ class FileBrowser extends Module{
 			<div class="row">
 				<div class="col-md-8">
 					<h2><a href="<?php echo $this->tmdbUrl.$type.'/'.$movie->id; ?>"><?php echo ($type == 'movie') ? $movie->title : $movie->name; ?></a></h2>
+					<p>Il est possible que le film indiqué ci-dessous ne soit pas le bon. L'interrogation de la base IMDB retourne parfois des résultats étranges...</p>
 					<ul>
 						<li>Date de <?php echo ($type == 'movie') ? 'sortie en France' : 'première diffusion aux USA'; ?> : <?php echo date("d/m/Y", strtotime($release->release_date)); ?></li>
 						<?php if ($type == 'movie'){ ?>
