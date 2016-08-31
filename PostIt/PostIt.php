@@ -64,7 +64,7 @@ class PostIt extends Module{
 	 * Version du module
 	 * @var string
 	 */
-	protected $version = '2.0';
+	protected $version = '2.1';
 
 	/**
 	 * Instantiation du module
@@ -104,24 +104,54 @@ class PostIt extends Module{
 	 * @return bool
 	 */
 	protected function runUpdateScript(){
-		global $db;
-		if (version_compare($_SESSION['modulesVersion'][$this->id], '2.0', '<')){
-			$posts = $db->get('module_postit');
-			new Alert('warning', 'Mise à jour du module en version <code>2.0</code>.<br>Les <strong>'.count($posts).'</strong> post-It vont être chiffrés, cela peut prendre un certain temps...');
-			$db->startTransaction();
-			foreach ($posts as $post){
-				$encryptedContent = \Sanitize::encryptData($post->content);
-				$ret = $db->update('module_postit', array('content' => $encryptedContent), array('id' => $post->id));
-				if ($ret === false) {
-					$db->rollBackTransaction();
-					new Alert('error', 'La mise à jour des post-It a été annulée ! Abandon de la mise à jour <code>2.0</code>.');
-					return false;
-				}
-			}
-			$db->commitTransaction();
-			new Alert('success', 'Le chiffrement des <strong>'.count($posts).'</strong> post-It s\'est correctement déroulé, fin de la mise à jour en version <code>2.0</code>.');
-		}
 		return true;
+	}
+
+	protected function encryptAllPostIt(){
+		global $db;
+		$posts = $db->get('module_postit', null, array('encrypted' => false));
+		new Alert('warning', 'Les <strong>'.count($posts).'</strong> post-It vont être chiffrés, cela peut prendre un certain temps...');
+		$db->startTransaction();
+		foreach ($posts as $post){
+			$encryptedContent = \Sanitize::encryptData($post->content);
+			$ret = $db->update('module_postit', array('content' => $encryptedContent, 'encrypted' => true), array('id' => $post->id));
+			if ($ret === false) {
+				$db->rollBackTransaction();
+				new Alert('error', 'Le chiffrement des post-It a été annulé !');
+				return false;
+			}
+		}
+		$db->commitTransaction();
+		new Alert('success', 'Le chiffrement des <strong>'.count($posts).'</strong> post-It s\'est correctement déroulé.');
+		return true;
+	}
+
+	protected function decryptAllPostIt(){
+		global $db;
+		$posts = $db->get('module_postit', null, array('encrypted' => true));
+		new Alert('warning', 'Les <strong>'.count($posts).'</strong> post-It vont être déchiffrés, cela peut prendre un certain temps...');
+		$db->startTransaction();
+		foreach ($posts as $post){
+			$decryptedContent = \Sanitize::decryptData($post->content);
+			$ret = $db->update('module_postit', array('content' => $decryptedContent, 'encrypted' => false), array('id' => $post->id));
+			if ($ret === false) {
+				$db->rollBackTransaction();
+				new Alert('error', 'Le déchiffrement des post-It a été annulé !');
+				return false;
+			}
+		}
+		$db->commitTransaction();
+		new Alert('success', 'Le déchiffrement des <strong>'.count($posts).'</strong> post-It s\'est correctement déroulé.');
+		return true;
+	}
+
+	protected function getUpgradeQueries(){
+		return array(
+			'2.1' => array(
+	      'ALTER TABLE `module_postit` ADD `encrypted` BOOL DEFAULT 0 COMMENT "Contenu chiffré"'
+			)
+		);
+
 	}
 
 	/**
@@ -131,7 +161,7 @@ class PostIt extends Module{
 	 */
 	public function defineSettings(){
 		/**
-		 * @see Db\Db->createTable pour plus de détails sur la création d'une table.
+		 * @see \Db\Db->createTable pour plus de détails sur la création d'une table.
 		 */
 		$postIt = new DbTable('module_postit', 'Post-It');
 		$postIt->addField(new IntField('id', null, null, null, null, new DbFieldSettings('number', true, 11, 'primary', false, true, 0, null, false, false)));
@@ -140,6 +170,7 @@ class PostIt extends Module{
 		$postIt->addField(new BoolField('shared', false, 'Post-it public ou privé', null, new DbFieldSettings('checkbox', true, 1, 'index', false, false, 0, null, true)));
 		$postIt->addField(new IntField('created', null, 'Timestamp de création', null, null, new DbFieldSettings('number', true, 11)));
 		$postIt->addField(new IntField('modified', null, 'Timestamp de dernière modification', null, null, new DbFieldSettings('number', true, 11, false, false, false, 0, null, true)));
+		$postIt->addField(new BoolField('encrypted', false, 'Contenu chiffré', null, new DbFieldSettings('checkbox', true, 1)));
 
 		$this->dbTables['module_postit'] = $postIt;
 
@@ -148,6 +179,7 @@ class PostIt extends Module{
 		$this->settings['sharedByDefault']->setUserDefinable();
 		$this->settings['alwaysShowAddPost'] = new BoolField('alwaysShowAddPost', false, 'Afficher l\'ajout de post-it en permanence <noscript><span class="text-danger">(actif seulement quand Javascript est activé)</span></noscript>', null, null, false, null, null, false, $switch);
 		$this->settings['alwaysShowAddPost']->setUserDefinable();
+		$this->settings['encryptData'] = new BoolField('encryptData', false, 'Chiffrer les données dans la base de données', 'Afin de garantir la sécurité des post-it en cas de piratage de base de données, on peut chiffrer leur contenu. Quelqu\'un qui aurait accès à la base de données ne pourrait pas les lire directement. Le chiffrement se fait avec la clé de salage, aussi ne faut-il absolument pas la perdre sous peine de perdre définitivement l\'accès en cas d\'export/import des données.', null, true, null, null, false, $switch);
 		$orderChoices = array(
 			'desc'  => 'Les plus récents en premier',
 		  'asc'   => 'Les plus anciens en premier'
@@ -158,6 +190,23 @@ class PostIt extends Module{
 		$choices = array_combine($tab, $tab);
 		$this->settings['postsPerPage'] = new Select('postsPerPage', 10, 'Nombre de post-it par page', null, false, null, null, false, $choices);
 		$this->settings['postsPerPage']->setUserDefinable();
+	}
+
+	public function saveDbSettings() {
+		global $db;
+		$encryptedBefore = (bool)$db->getVal('modules_settings', 'value', array('module' => $this->id, 'setting' => 'encryptData'));
+
+		$ret = parent::saveDbSettings();
+		if ($ret){
+			if ($this->settings['encryptData']->getValue() != $encryptedBefore){
+				if ($encryptedBefore){
+					$this->decryptAllPostIt();
+				}else{
+					$this->encryptAllPostIt();
+				}
+			}
+		}
+		return $ret;
 	}
 
 	/**
@@ -277,7 +326,7 @@ class PostIt extends Module{
 			new Alert('error', 'Vous n\'avez pas l\'autorisation de modifier ce post-it !');
 			$post = null;
 		}
-		$content = (!empty($post)) ? $post->getContent(true) : '';
+		$content = (!empty($post)) ? $post->getContent(true, $this->settings['encryptData']) : '';
 		$shared = (!empty($post)) ? $post->getShared() : $this->settings['sharedByDefault']->getValue();
 
 		$action = (!empty($post)) ? '#post_'.$post->getId() : ($this->settings['order']->getValue() == "asc") ? '#postsEnd' : '';
@@ -287,10 +336,12 @@ class PostIt extends Module{
 		if (!empty($post)){
 			$form->addField(new Hidden('id', $post->getId()));
 			$form->addField(new Hidden('page', $this->page));
+			$form->addField(new Hidden('encrypted', $post->isEncrypted()));
 		}elseif ($this->settings['order']->getValue() == "asc") {
 			$form->addField(new Hidden('page', ceil($this->nbPosts / $this->settings['postsPerPage']->getValue())));
 		}else{
 			$form->addField(new Hidden('page', 1));
+			$form->addField(new Hidden('encrypted', $this->settings['encryptData']->getValue()));
 		}
 		$label = (!empty($post)) ? 'Modifier' : 'Ajouter';
 		$form->addField(new Button('action', 'savePost', $label, 'modify', 'btn-primary'));
@@ -388,6 +439,7 @@ class PostIt extends Module{
 	 */
 	protected function displaySinglePost(Post $post){
 		global $cUser;
+		$encryptedData = $this->settings['encryptData']->getValue();
 		// Les avatars sont mis en mémoire afin de ne pas refaire une requête à chaque fois
 		if (!isset($this->authorAvatars[$post->getAuthor(true)])){
 			$author = new User($post->getAuthor(true), 1);
@@ -400,7 +452,7 @@ class PostIt extends Module{
 			</div>
 			<div class="col-lg-11 col-md-10 col-sm-10 col-xs-12">
 				<div class="well well-large">
-					<?php echo $post->getContent(); ?>
+					<?php echo $post->getContent(false, $encryptedData); ?>
 				</div>
 				<div class="pull-right small">
 					<i>
@@ -411,6 +463,7 @@ class PostIt extends Module{
 						&nbsp;<span class="visible-xs visible-phone">par <?php echo $post->getAuthor(); ?></span>
 					</i>
 					<?php if ($post->getShared()) { ?><span class="fa fa-users tooltip-bottom" title="Post-It public"></span>&nbsp;<?php } ?>
+					<?php if ($post->isEncrypted()) { ?><span class="fa fa-key tooltip-bottom" title="Post-It chiffré"></span>&nbsp;<?php } ?>
 					<?php
 					if (ACL::canModify('module', $this->id) and (ACL::canAdmin('module', $this->id) or $cUser->getId() == $post->getAuthor(true))){
 						$form = new Form('editPost_'.$post->getId(), $this->url.'&itemsPage='.$this->page, null, 'module', $this->id, 'post', 'form-inline inline-block');
@@ -441,9 +494,13 @@ class PostIt extends Module{
 			new Alert('error', 'Le post-it est vide !');
 			return false;
 		}
-
-		$fields['content'] = \Sanitize::encryptData(\Sanitize::SanitizeForDb($this->postedData['content'], false));
+		$encryptData = $this->settings['encryptData']->getValue();
+		$fields['content'] = \Sanitize::SanitizeForDb($this->postedData['content'], false);
+		if ($encryptData){
+			$fields['content'] = \Sanitize::encryptData($fields['content']);
+		}
 		$fields['shared'] = \Sanitize::SanitizeForDb($this->postedData['shared']);
+		$fields['encrypted'] = $encryptData;
 		if (isset($this->postedData['id'])){
 			$fields['modified'] = time();
 			$where['id'] = $this->postedData['id'];

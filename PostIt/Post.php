@@ -26,17 +26,20 @@ class Post {
 	protected $shared = false;
 	protected $created = 0;
 	protected $modified = 0;
+	protected $encrypted = false;
 
 	/**
 	 * Crée un objet Post
-	 * @param object|string $content Objet base de données de post ou contenu du post-it
-	 * @param int  $author ID de l'auteur
-	 * @param int  $shared Post-it partagé
-	 * @param null $created Timestamp de création
-	 * @param null $modified Timestamp de modification
-	 * @param null $id ID du post-it
+	 *
+	 * @param object|string $content  Objet base de données de post ou contenu du post-it
+	 * @param int           $author   ID de l'auteur
+	 * @param int           $shared   Post-it partagé
+	 * @param null          $created  Timestamp de création
+	 * @param null          $modified Timestamp de modification
+	 * @param null          $id       ID du post-it
+	 * @param bool          $encrypted
 	 */
-	public function __construct($content, $author = 0, $shared = 0, $created = null, $modified = null, $id = null){
+	public function __construct($content, $author = 0, $shared = 0, $created = null, $modified = null, $id = null, $encrypted = false){
 		if (is_object($content)){
 			$tab = (array)$content;
 			unset($content);
@@ -46,6 +49,7 @@ class Post {
 		$this->content = $content;
 		$this->author = (int)$author;
 		$this->shared = (bool)$shared;
+		$this->encrypted = (bool)$encrypted;
 		if (!empty($created)) $this->created = (int)$created;
 		if (!empty($modified)) $this->modified = (int)$modified;
 		if (!empty($id)) $this->id = (int)$id;
@@ -63,17 +67,20 @@ class Post {
 
 	/**
 	 * Retourne le contenu du post-it
+	 *
 	 * @param bool $realValue
+	 *
+	 * @param bool $encrypted
 	 *
 	 * @return null
 	 */
-	public function getContent($realValue = false) {
+	public function getContent($realValue = false, $encrypted = false) {
 		if (!$realValue){
-			$content = MarkdownExtra::defaultTransform(\Sanitize::decryptData(htmlspecialchars_decode($this->content)));
+			$content = ($this->encrypted) ? MarkdownExtra::defaultTransform(\Sanitize::decryptData(htmlspecialchars_decode($this->content))) : MarkdownExtra::defaultTransform(htmlspecialchars_decode($this->content));
 			// Gestion des antislashes dans les balises code (les antislashes sont doublés dans ces cas-là par le système)
 			$content = str_replace('\\\\', '\\', $content);
 		}else{
-			$content = \Sanitize::decryptData($this->content);
+			$content = ($this->encrypted) ? \Sanitize::decryptData($this->content) : $this->content;
 		}
 		return $content;
 	}
@@ -108,5 +115,12 @@ class Post {
 	 */
 	public function getId() {
 		return $this->id;
+	}
+
+	/**
+	 * @return boolean
+	 */
+	public function isEncrypted() {
+		return $this->encrypted;
 	}
 } 
