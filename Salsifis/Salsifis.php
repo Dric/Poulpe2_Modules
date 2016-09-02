@@ -66,7 +66,7 @@ class Salsifis extends Module{
 					</div>
 					<div class="col-md-6">
 						<?php $this->processes(); ?>
-						<?php $this->actions(); ?>
+						<?php //$this->actions(); ?>
 					</div>
 				</div>
 			</div>

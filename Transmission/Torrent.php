@@ -358,7 +358,7 @@ Class Torrent{
 					<?php } ?>
 					<li>
 						<a data-toggle="collapse" data-parent="#torrent_<?php echo $this->id; ?>" href="#collapse_<?php echo $this->id; ?>">Liste des fichiers</a>
-						<ul class="collapse" id="collapse_<?php echo $this->id; ?>">
+						<ul class="collapse small" id="collapse_<?php echo $this->id; ?>">
 						<?php
 						foreach ($this->files as $file){
 							?><li><?php echo $file->name; ?></li><?php
