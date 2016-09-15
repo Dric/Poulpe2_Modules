@@ -114,10 +114,10 @@ class FileBrowser extends Module{
 
 	protected function displayFile($file){
 		$path = dirname($file).DIRECTORY_SEPARATOR;
+		$fullFilePath = $file;
 		$file = str_replace($path, '', $file);
 		$fs = new Fs($path);
 		$fileMeta = $fs->getFileMeta($file);
-
 		?>
 		<h2><span class="fa fa-<?php echo $fileMeta->getIcon(); ?>"></span>&nbsp;&nbsp;<?php echo $file; ?></h2>
 		<p>&nbsp;&nbsp;Dans <a href="<?php echo $this->buildArgsURL(array('folder' => urlencode($fileMeta->parentFolder))); ?>"><?php echo $fileMeta->parentFolder; ?></a></p>
@@ -125,6 +125,7 @@ class FileBrowser extends Module{
 			<li>Date de création : <?php echo \Sanitize::date($fileMeta->dateCreated, 'dateTime'); ?></li>
 			<li>Date de dernière modification : <?php echo \Sanitize::date($fileMeta->dateModified, 'dateTime'); ?></li>
 			<li>Taille : <?php echo \Sanitize::readableFileSize($fileMeta->size); ?></li>
+			<li>Lien : <a class="noLoadMessage" href="<?php echo $this->buildArgsURL(array('file' => $fullFilePath, 'action' => 'fileDownload')); ?>">Télécharger le fichier</a></li>
 			<li>
 				Contenu :<br>
 				<?php
@@ -158,6 +159,39 @@ class FileBrowser extends Module{
 			</li>
 		</ul>
 	<?php
+	}
+
+	protected function fileDownload(){
+		$file = null;
+		if (isset($_REQUEST['file'])){
+			$file = urldecode($_REQUEST['file']);
+			if (!file_exists($file)){
+				new Alert('error', 'Le fichier <code>'.$file.'</code> n\'existe pas !');
+				$file = null;
+			}elseif (strpos($file, $this->settings['rootFolder']->getValue()) === false){
+				new Alert('error', 'Vous n\'avez pas l\'autorisation de visualiser ce fichier !');
+				$file = null;
+			}
+		}
+		if (empty($file)){
+			$folder = (isset($_REQUEST['folder'])) ? urldecode($_REQUEST['folder']): $this->settings['rootFolder']->getValue();
+			if (!file_exists($folder)){
+				new Alert('error', 'Le répertoire <code>'.$folder.'</code> n\'existe pas !');
+				$folder = $this->settings['rootFolder']->getValue();
+			}elseif (strpos($folder, $this->settings['rootFolder']->getValue()) === false){
+				new Alert('error', 'Vous n\'avez pas l\'autorisation de visualiser ce répertoire !');
+				$folder = $this->settings['rootFolder']->getValue();
+			}
+		}
+		header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+		header("Content-Length: " . filesize($file));
+		header("Content-Type: application/octet-stream;");
+		header("Cache-Control: no-cache, must-revalidate");
+		header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+		ob_clean();
+		flush();
+		readfile($file);
+		exit;
 	}
 
 	/**
