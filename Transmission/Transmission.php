@@ -130,7 +130,7 @@ class Transmission extends Module{
 
 		$this->settings['module_downloadsDirs'] = new Table($dirs);
 
-		Front::setCssHeader('<link rel="stylesheet" href="Modules/Transmission/Transmission.css">');
+		Front::setCssHeader('<link rel="stylesheet" href="'.Front::getBaseUrl().'/'.\Settings::MODULE_DIR.'/Transmission/Transmission.css">');
 	}
 
 	/**

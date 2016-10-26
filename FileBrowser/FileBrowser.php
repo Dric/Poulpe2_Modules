@@ -51,7 +51,7 @@ class FileBrowser extends Module{
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/extensions/Responsive/js/dataTables.responsive.min.js"></script>');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/plugins/integration/bootstrap/3/dataTables.bootstrap.js"></script>');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/highlight/highlight.pack.js"></script>');
-		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/'.MODULE_DIR.'/FileBrowser/FileBrowser.js"></script>');
+		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/'.\Settings::MODULE_DIR.'/FileBrowser/FileBrowser.js"></script>');
 	}
 
 	/**
@@ -274,14 +274,10 @@ class FileBrowser extends Module{
 		echo '<!-- name : '.\Get::varDump($name).' -->'."\n";
 		if ($type =='tv') echo '<!-- saison : '.\Get::varDump($season).' - épisode : '.\Get::varDump($episode).' -->'."\n";
 		spl_autoload_register(function ($class) {
-			if (DETAILED_DEBUG) {
-				global $classesUsed;
-				$classesUsed[] = $class;
-			}
 			$tab = explode('\\', $class);
 			// Les modules sont dans un répertoire à part
 			if ($tab[0] == 'TMDB'){
-				@include_once Front::getAbsolutePath().'/'.MODULE_DIR.'/FileBrowser/'.str_replace("\\", "/", $class) . '.php';
+				@include_once Front::getAbsolutePath().'/'.\Settings::MODULE_DIR.'/FileBrowser/'.str_replace("\\", "/", $class) . '.php';
 			}
 		});
 		$tmdb = \TMDB\Client::getInstance('dfac51ae8cfdf42455ba6b01f392940f');
@@ -353,7 +349,7 @@ class FileBrowser extends Module{
 					?>
 					<div class="media">
 						<a class="pull-left" href="<?php echo $this->tmdbUrl.'person/'.$director->id; ?>">
-							<img class="media-object" src="<?php echo (!empty($director->profile_path)) ? $tmdb->image_url('poster', 80, $director->profile_path) : AVATAR_PATH.DIRECTORY_SEPARATOR.AVATAR_DEFAULT; ?>" alt="<?php echo $director->name; ?>">
+							<img class="media-object" src="<?php echo (!empty($director->profile_path)) ? $tmdb->image_url('poster', 80, $director->profile_path) : \Settings::AVATAR_PATH.DIRECTORY_SEPARATOR.\Settings::AVATAR_DEFAULT; ?>" alt="<?php echo $director->name; ?>">
 						</a>
 						<div class="media-body">
 							<h4 class="media-heading"><a href="<?php echo $this->tmdbUrl.'person/'.$director->id; ?>"><?php echo $director->name; ?></a></h4>
@@ -365,7 +361,7 @@ class FileBrowser extends Module{
 						?>
 						<div class="media">
 							<a class="pull-left" href="<?php echo $this->tmdbUrl.'person/'.$actor->id; ?>">
-								<img class="media-object" src="<?php echo (!empty($actor->profile_path)) ? $tmdb->image_url('poster', 80, $actor->profile_path) : AVATAR_PATH.DIRECTORY_SEPARATOR.AVATAR_DEFAULT; ?>" alt="<?php echo $actor->name; ?>">
+								<img class="media-object" src="<?php echo (!empty($actor->profile_path)) ? $tmdb->image_url('poster', 80, $actor->profile_path) : \Settings::AVATAR_PATH.DIRECTORY_SEPARATOR.\Settings::AVATAR_DEFAULT; ?>" alt="<?php echo $actor->name; ?>">
 							</a>
 							<div class="media-body">
 							<h4 class="media-heading"><a href="<?php echo $this->tmdbUrl.'person/'.$actor->id; ?>"><?php echo $actor->name; ?></a></h4>

@@ -75,7 +75,7 @@ class PostIt extends Module{
 		Front::setCssHeader('<link href="'.Front::getBaseUrl().'/js/highlight/styles/default.css" rel="stylesheet">');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/pagedown-bootstrap/js/jquery.pagedown-bootstrap.combined.min.js"></script>');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/highlight/highlight.pack.js"></script>');
-		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/'.MODULE_DIR.'/PostIt/PostIt.js"></script>');
+		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/'.\Settings::MODULE_DIR.'/PostIt/PostIt.js"></script>');
 	}
 
 	/**
@@ -186,7 +186,7 @@ class PostIt extends Module{
 		);
 		$this->settings['order'] = new Select('order', 'desc', 'Ordre d\'affichage des Post-It', null, false, null, null, false, $orderChoices);
 		$this->settings['order']->setUserDefinable();
-		$tab = explode(', ', PER_PAGE_VALUES);
+		$tab = \Settings::PER_PAGE_VALUES;
 		$choices = array_combine($tab, $tab);
 		$this->settings['postsPerPage'] = new Select('postsPerPage', 10, 'Nombre de post-it par page', null, false, null, null, false, $choices);
 		$this->settings['postsPerPage']->setUserDefinable();
