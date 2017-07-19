@@ -43,13 +43,12 @@ class FileBrowser extends Module{
 	 * Les paramètres sont définis non pas avec des objets Setting mais avec des objets Field (sans quoi on ne pourra pas créer d'écran de paramétrage)
 	 */
 	public function defineSettings(){
-		$this->settings['rootFolder']  = new StringField('rootFolder', '/media/salsifis','Répertoire racine des fichiers', '/media/salsifis', null, new Pattern('string', true), true);
-		Front::setCssHeader('<link href="'.Front::getBaseUrl().'/js/DataTables/extensions/Responsive/css/dataTables.responsive.css" rel="stylesheet">');
-		Front::setCssHeader('<link href="'.Front::getBaseUrl().'/js/DataTables/plugins/integration/bootstrap/3/dataTables.bootstrap.css" rel="stylesheet">');
+		$this->settings['rootFolder']  = new StringField('rootFolder', '/media/data','Répertoire racine des fichiers', '/media/data', null, new Pattern('string', true), true);
+		Front::setCssHeader('<link href="'.Front::getBaseUrl().'/js/DataTables/Responsive-2.1.1/css/dataTables.responsive.css" rel="stylesheet">');
 		Front::setCssHeader('<link href="'.Front::getBaseUrl().'/js/highlight/styles/default.css" rel="stylesheet">');
-		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/media/js/jquery.dataTables.min.js"></script>');
-		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/extensions/Responsive/js/dataTables.responsive.min.js"></script>');
-		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/plugins/integration/bootstrap/3/dataTables.bootstrap.js"></script>');
+		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/DataTables-1.10.15/js/jquery.dataTables.min.js"></script>');
+		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/Responsive-2.1.1/js/dataTables.responsive.min.js"></script>');
+		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/DataTables/DataTables-1.10.15/js/dataTables.bootstrap.min.js"></script>');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/js/highlight/highlight.pack.js"></script>');
 		Front::setJsFooter('<script src="'.Front::getBaseUrl().'/'.\Settings::MODULE_DIR.'/FileBrowser/FileBrowser.js"></script>');
 	}
